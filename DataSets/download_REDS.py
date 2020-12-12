@@ -104,10 +104,10 @@ ids = { 'train_sharp': '1YLksKtMhd2mWyVSkvhDaDLWSc1qYNCz-',
 
 # Download files in REDS directory
 if os.path.basename(os.getcwd()) == 'REDS':
-    root_dir = '.'
+    root_dir = '..'
 else:
-    os.makedirs('REDS', exist_ok=True)
-    root_dir = 'REDS'
+    os.makedirs('../REDS', exist_ok=True)
+    root_dir = '../REDS'
 
 for subset in ids:
     argdict = args.__dict__
