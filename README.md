@@ -13,18 +13,13 @@ Examples:
    ```
    git clone --recursive git@github.com:bermanz/MotionDeblurringProj.git
    ```  
-2. Download the Raw images required for the dataset generation:
-   a. Go to https://seungjunnah.github.io/Datasets/reds.html
-   b. Download the "traing_orig_*" and "val_orig_*" files, and store them under DataSets/REDS/Raw/train and DataSets/REDS/Raw/val respectively.
-   c. Execute:
+1. Download the Raw images required for the dataset generation:
+   1. Go to https://seungjunnah.github.io/Datasets/reds.html
+   1. Download the "traing_orig_*" and "val_orig_*" files, and store them under DataSets/REDS/Raw/train and DataSets/REDS/Raw/val respectively.
+   1. Execute:
     ```
    python DataSets/DataSets.py
    ```    
    
 ## Training
 
-1. Item 1
-1. Item 2
-1. Item 3
-   1. Item 3a
-   1. Item 3b
