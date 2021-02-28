@@ -15,7 +15,7 @@ Examples:
    ```  
 1. Download the Raw images required for the dataset generation:
    1. Go to https://seungjunnah.github.io/Datasets/reds.html
-   1. Download the "traing_orig_*" and "val_orig_*" files, and store them under DataSets/REDS/Raw/train and DataSets/REDS/Raw/val respectively.
+   1. Download the "train_orig_*" and "val_orig_*" files, and store them under DataSets/REDS/Raw/train and DataSets/REDS/Raw/val respectively.
 1. Generate the dataset by Executing:
    ```
    python DataSets/DataSets.py
