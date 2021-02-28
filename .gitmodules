@@ -1,0 +1,3 @@
+[submodule "Ref"]
+	path = Ref
+	url = https://github.com/MeiguangJin/Learning-to-Extract-a-Video-Sequence-from-a-Single-Motion-Blurred-Image.git
