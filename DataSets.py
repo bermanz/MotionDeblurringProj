@@ -13,10 +13,10 @@ import matplotlib.gridspec as gridspec
 import cv2
 from scipy.ndimage import convolve
 from scipy.io import loadmat
-from utils import *
+import sys
+from utils import SetType, ObjType, visualiseSet
 
-dataBaseDir = os.path.join(os.path.dirname(__file__), 'REDS')
-
+baseDir = os.path.join(os.path.dirname(__file__), "DataSets")
 
 def getSubSetParams(setPath):
     """get the parameters of a subset of the data.
@@ -104,104 +104,82 @@ def simPhaseMaskAcq(rawFrames, psfs):
     return acqFrames
 
 
-def initH5File(setType, dType=np.uint8, objType=ObjType.SingleImgDblr, nFrames=7, downSamp=False, psfs=None):
+def initH5File(setType, rawPath,  dType=np.uint8, nFrames=7, downSamp=False, psfs=None):
     """Create and initialize an H5 file for the desired dataset.
 
         Params:
              SetType (SetType): the set type
+             rawPath (str): the full path to the source dir of the raw data path
              dType (numpy.generic): the data type of the images
              objType (ObjType): the objective type of the network
              nFrames (int): the number of frames to reconstruct and to generate the blurry source frame from
              nFrames (bool): indicator for down-sampling the input images of 45% in both axes.
              psfs (numpy.ndarray): the PSFs of the phase-mask at the acquisition times of the input frames.
     """
+    if not os.path.isdir(os.path.join(baseDir, "REDS")):
+        os.mkdir(os.path.join(baseDir, "REDS"))
+    if not os.path.isdir(os.path.join(baseDir, "REDS", "H5")):
+        os.mkdir(os.path.join(baseDir, "REDS", "H5"))
 
-    # create paths:
-    if objType == ObjType.SingleImgDblr:
-        xSrcPath = os.path.join(dataBaseDir, 'Raw', setType.name, setType.name + '_' + 'sharp' + '.zip')
-        ySrcPath = os.path.join(dataBaseDir, 'Raw', setType.name, setType.name + '_' + 'blur' + '.zip')
+    ## Generate Dataset:
+    numEl, setSpatDim, scenesNum = getSetParams(rawPath)
+    if downSamp:
+        setSpatDim = (int(setSpatDim[0]*0.45), int(setSpatDim[1]*0.45), 3)
+    elPerScene = numEl//scenesNum
+    bluredPerScene = elPerScene // nFrames
+    targetPath = os.path.join(baseDir, "REDS", 'H5')
+    targetPathX = os.path.join(targetPath, setType.name + ObjType.VidFromMotion.name + '_x.h5')
+    targetPathY = os.path.join(targetPath, setType.name + ObjType.VidFromMotion.name + '_y.h5')
+    with h5py.File(targetPathY, "w") as h5File:
+        h5File.create_dataset('_'.join(['y', setType.name]), (bluredPerScene * scenesNum, *setSpatDim), dtype=dType)
+    with h5py.File(targetPathX, "w") as h5File:
+        h5File.create_dataset('_'.join(['x', setType.name]), (bluredPerScene * scenesNum, nFrames, *setSpatDim), dtype=dType)
 
-        numEl, setSpatDim = getSetParams(ySrcPath)
-        targetPath = os.path.join(dataBaseDir, 'H5', setType.name + objType.name + '.h5')
-        with h5py.File(targetPath, "w") as h5File:
-            h5File.create_dataset('_'.join(['x', setType.name]), (numEl, *setSpatDim), dtype=dType)
-            h5File.create_dataset('_'.join(['y', setType.name]), (numEl, *setSpatDim), dtype=dType)
+    # Initialize the H5 Files:
+    h5FileX = h5py.File(targetPathX, "a")
+    h5FileY = h5py.File(targetPathY, "a")
 
-        # Initialize the H5 File:
-        with h5py.File(targetPath, "a") as h5File:
-            with tqdm(total=2 * numEl, desc='Transferring Set to H5') as pbar:
-                for label, path in zip(['x', 'y'], [xSrcPath, ySrcPath]):
-                    with ZipFile(path, 'r') as zipFile:
-                        srcFilesList = [file for file in zipFile.namelist() if '.png' in file]
-                        srcFilesList.sort()
-                        for i, file in enumerate(srcFilesList):
-                            data = zipFile.open(file)
-                            img = Image.open(data)
-                            imgNumpy = np.array(img)
-                            h5File['_'.join([label, setType.name])][i] = imgNumpy
-                            pbar.update(1)
+    dirCont = [name for name in os.listdir(rawPath) if ".zip" in name]
+    with tqdm(total=numEl, desc=f'Generating a H5 {setType.name} set') as pbar:
+        for file in dirCont:
+            with ZipFile(os.path.join(rawPath, file), 'r') as zipFile:
+                srcFilesList = [file for file in zipFile.namelist() if '.png' in file]
+                srcFilesList.sort()
+                sceneList = np.unique([file.split('/')[-2] for file in srcFilesList])
+                for scene in sceneList:
+                    sceneFiles = [file for file in srcFilesList if '/' + scene + '/' in file]
+                    framesSeq = np.array([])
+                    baseIdx = int(scene) * bluredPerScene
+                    for i, file in enumerate(sceneFiles):
+                        data = zipFile.open(file)
+                        img = Image.open(data)
+                        imgNumpy = np.array(img)
+                        if downSamp:
+                            imgDims = imgNumpy.shape
+                            imgResized = cv2.resize(imgNumpy, (int(imgDims[1] * 0.45), int(imgDims[0] * 0.45)))
+                        else:
+                            imgResized = imgNumpy
+                        if not framesSeq.any():
+                            framesSeq = np.expand_dims(imgResized, axis=0)
+                        else:
+                            framesSeq = np.concatenate([framesSeq, np.expand_dims(imgResized, axis=0)])
 
-    else:
-        ySrcPath = os.path.join(dataBaseDir, 'Raw', setType.name)
-        # TODO: gather all parts and not only part 0
-        numEl, setSpatDim, scenesNum = getSetParams(ySrcPath)
-        if downSamp:
-            setSpatDim = (int(setSpatDim[0]*0.45), int(setSpatDim[1]*0.45), 3)
-        elPerScene = numEl//scenesNum
-        bluredPerScene = elPerScene // nFrames
-        targetPath = os.path.join(dataBaseDir, 'H5')
-        targetPathX = os.path.join(targetPath, setType.name + objType.name + '_x.h5')
-        targetPathY = os.path.join(targetPath, setType.name + objType.name + '_y.h5')
-        with h5py.File(targetPathY, "w") as h5File:
-            h5File.create_dataset('_'.join(['y', setType.name]), (bluredPerScene * scenesNum, *setSpatDim), dtype=dType)
-        with h5py.File(targetPathX, "w") as h5File:
-            h5File.create_dataset('_'.join(['x', setType.name]), (bluredPerScene * scenesNum, nFrames, *setSpatDim), dtype=dType)
-
-        # Initialize the H5 Files:
-        h5FileX = h5py.File(targetPathX, "a")
-        h5FileY = h5py.File(targetPathY, "a")
-
-        dirCont = [name for name in os.listdir(ySrcPath) if ".zip" in name]
-        with tqdm(total=numEl, desc=f'Transferring Set to H5') as pbar:
-            for file in dirCont:
-                with ZipFile(os.path.join(ySrcPath, file), 'r') as zipFile:
-                    srcFilesList = [file for file in zipFile.namelist() if '.png' in file]
-                    srcFilesList.sort()
-                    sceneList = np.unique([file.split('/')[-2] for file in srcFilesList])
-                    for scene in sceneList:
-                        sceneFiles = [file for file in srcFilesList if '/' + scene + '/' in file]
-                        framesSeq = np.array([])
-                        baseIdx = int(scene) * bluredPerScene
-                        for i, file in enumerate(sceneFiles):
-                            data = zipFile.open(file)
-                            img = Image.open(data)
-                            imgNumpy = np.array(img)
-                            if downSamp:
-                                imgDims = imgNumpy.shape
-                                imgResized = cv2.resize(imgNumpy, (int(imgDims[1] * 0.45), int(imgDims[0] * 0.45)))
-                            else:
-                                imgResized = imgNumpy
-                            if not framesSeq.any():
-                                framesSeq = np.expand_dims(imgResized, axis=0)
-                            else:
-                                framesSeq = np.concatenate([framesSeq, np.expand_dims(imgResized, axis=0)])
-
-                            if not ((i+1) % nFrames):  ## dump the nFrames into the h5 file as a sequence
-                                for label, path in zip(['x', 'y'], [targetPathX, targetPathY]):
-                                    if label == 'x':
-                                        h5FileX['_'.join([label, setType.name])][baseIdx + i//nFrames] = framesSeq.copy()
+                        if not ((i+1) % nFrames):  ## dump the nFrames into the h5 file as a sequence
+                            for label, path in zip(['x', 'y'], [targetPathX, targetPathY]):
+                                if label == 'x':
+                                    h5FileX['_'.join([label, setType.name])][baseIdx + i//nFrames] = framesSeq.copy()
+                                else:
+                                    seqFloat = framesSeq.astype(float) / 255
+                                    if psfs is not None:  # Simulate the phase-mask acquisition
+                                        inSeq = simPhaseMaskAcq(seqFloat, psfs)
                                     else:
-                                        seqFloat = framesSeq.astype(float) / 255
-                                        if psfs is not None:  # Simulate the phase-mask acquisition
-                                            inSeq = simPhaseMaskAcq(seqFloat, psfs)
-                                        else:
-                                            inSeq = seqFloat
-                                        h5FileY['_'.join([label, setType.name])][baseIdx + i//nFrames] = \
-                                            getBlurredImg(inSeq)
-                                framesSeq = np.array([])
-                            pbar.update(1)
-        h5FileX.close()
-        h5FileY.close()
+                                        inSeq = seqFloat
+                                    h5FileY['_'.join([label, setType.name])][baseIdx + i//nFrames] = \
+                                        getBlurredImg(inSeq)
+                            framesSeq = np.array([])
+                        pbar.update(1)
+    h5FileX.close()
+    h5FileY.close()
 
 
 def getSetLoader(setType, batchSz, setIdx=None):
@@ -223,10 +201,10 @@ class RedsH5(Dataset):
             setType = SetType.val
 
         if self.objType == ObjType.SingleImgDblr:
-            self.file = h5py.File(os.path.join(dataBaseDir, 'H5', setType.name + '.h5'), 'r')
+            self.file = h5py.File(os.path.join(baseDir, "REDS", 'H5', setType.name + '.h5'), 'r')
         else:
-            self.fileX = h5py.File(os.path.join(dataBaseDir, 'H5', setType.name + objType.name + '_x.h5'), 'r')
-            self.fileY = h5py.File(os.path.join(dataBaseDir, 'H5', setType.name + objType.name + '_y.h5'), 'r')
+            self.fileX = h5py.File(os.path.join(baseDir,  "REDS", 'H5', setType.name + objType.name + '_x.h5'), 'r')
+            self.fileY = h5py.File(os.path.join(baseDir,  "REDS", 'H5', setType.name + objType.name + '_y.h5'), 'r')
 
 
     def __getitem__(self, index):
@@ -273,23 +251,35 @@ class RedsH5(Dataset):
 
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description="Generate datasets for video-from-image network training")
+    parser.add_argument("-t", "--training", help="The full-path to the raw-training data directory")
+    parser.add_argument("-v", "--validation", help="The full-path to the raw-training data directory")
+    parser.add_argument("-m", "--masked", type=int, default=1, choices=[0, 1],
+                        help="Simulate phase-masking during dataset generation. default: 1 (do simulate)")
+    parser.add_argument("--debug", action="store_true",
+                        help="Display an exemplary set of input-targets upon completion")
+    args = parser.parse_args()
 
-    isTrainSet = True
-    isValSet = True
-    isSpatTempDist = True
+    trainPath = args.training
+    valPath = args.validation
+    isSpatTempDist = args.masked
+    debug = args.debug
 
     if isSpatTempDist:
         ## Load spatioTemporal static PSFs:
-        spatTempPsfs = loadmat("spatioTempSim/psfs.mat")['psfAr'].squeeze()
+        spatTempPsfs = loadmat("DataSets/spatioTempSim/psfs.mat")['psfAr'].squeeze()
     else:
         spatTempPsfs = None
 
-    if isTrainSet:
-        initH5File(SetType.train, objType=ObjType.VidFromMotion, psfs=spatTempPsfs)
-        trainSet = RedsH5(SetType.train, objType=ObjType.VidFromMotion)
-        visualiseSet(trainSet, batchSz=1, objType=ObjType.VidFromMotion)
+    if trainPath:
+        initH5File(SetType.train, trainPath, psfs=spatTempPsfs)
+        if debug:
+            trainSet = RedsH5(SetType.train, objType=ObjType.VidFromMotion)
+            visualiseSet(trainSet, batchSz=1, objType=ObjType.VidFromMotion)
 
-    if isValSet:
-        initH5File(SetType.val, objType=ObjType.VidFromMotion, psfs=spatTempPsfs)
-        valSet = RedsH5(SetType.val, objType=ObjType.VidFromMotion)
-        visualiseSet(valSet, batchSz=1, objType=ObjType.VidFromMotion)
+    if valPath:
+        initH5File(SetType.val, valPath, psfs=spatTempPsfs)
+        if debug:
+            valSet = RedsH5(SetType.val, objType=ObjType.VidFromMotion)
+            visualiseSet(valSet, batchSz=1, objType=ObjType.VidFromMotion)

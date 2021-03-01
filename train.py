@@ -1,15 +1,11 @@
 from Ref.model import centerEsti
-import numpy as np
-import torch
-from tqdm import tqdm, trange
-from torchvision import transforms
 import pandas as pd
 
-from DataSets.DataSets import *
+from DataSets import *
 import lossFuncs
 
 
-def train(nEpochs, optParams, batchSz=8, valEpochFact = 1, percWeight=3/4, checkpoint=None):
+def train(nEpochs, optParams, batchSz=8, valEpochFact = 1, percWeight=3/4, checkpoint=None, outpath=None):
     """The training routine for the video-from-image network
 
         Params:
@@ -25,8 +21,9 @@ def train(nEpochs, optParams, batchSz=8, valEpochFact = 1, percWeight=3/4, check
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = centerEsti()
     if checkpoint is not None:
-        model.load_state_dict(checkpoint['weights'])
-        e0 = checkpoint['epoch']+1
+        checkDict = torch.load(checkpoint)
+        model.load_state_dict(checkDict['weights'])
+        e0 = checkDict['epoch']+1
     else:
         e0 = 0
 
@@ -114,7 +111,10 @@ def train(nEpochs, optParams, batchSz=8, valEpochFact = 1, percWeight=3/4, check
                     "lr": optimizer.param_groups[0]['lr'],
                     "weights": model.state_dict()
                 }
-                torch.save(checkpoint, f'trainData_e{epoch}.pth')
+                if outpath:
+                    torch.save(checkpoint, os.path.join(outpath, f'trainData_e{epoch}.pth'))
+                else:
+                    torch.save(checkpoint, f'trainData_e{epoch}.pth')
                 valMinLoss = totLoss
 
     return lossTable, checkpoint
@@ -160,17 +160,28 @@ def testLoss(netWeights, percWeight=3/4, batchSz=8):
 
 if __name__ == "__main__":
     import os
+    import argparse
+    parser = argparse.ArgumentParser(description="Train the video-from-image network")
+    parser.add_argument("-e", "--epochs", type=int, default=44,
+                        help="The number of epochs to train for")
+    parser.add_argument("-c", "--checkpoint", help="The full-path to a checkpoint for the training to initialize the "
+                                                   "network with")
+    parser.add_argument("-o", "--output", help="The full-path to the output directory")
+    args = parser.parse_args()
+
+    nEpochs = args.epochs
+    inCheckpoint = args.checkpoint
+    outPath = args.output
 
     # default parameters:
     optParams = {
         'lr': 1e-4,
-    'betas': (0.5, 0.999),
-    'eps': 1e-8,
-    'weight_decay': 0
+        'betas': (0.5, 0.999),
+        'eps': 1e-8,
+        'weight_decay': 0
     }
-    nEpochs = 44
 
-    baseDir = os.path.join("Models", "PhaseMasked")
-    curCheckpoint = torch.load(os.path.join(baseDir, 'trainData_e6.pth'))
-
-    lossTable, curCheckpoint = train(nEpochs, optParams)
+    lossTable, outCheckpoint = train(nEpochs, optParams, checkpoint=inCheckpoint)
+    if outPath:
+        torch.save(outCheckpoint, os.path.join(outPath, f'trainData_e{nEpochs}.pth'))
+        lossTable.to_csv(os.path.join(outPath, f'convData_e{nEpochs}.pth'))

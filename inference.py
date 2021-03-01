@@ -102,11 +102,9 @@ def estAllFrames(blurryImg, midFrameEst):
     return outputFrames
 
 
-def getResult(inImgPath, solWeights):
+def getResult(inImgPath, solWeights, targetPath):
     """Get the output video for the input image using the input trained weights"""
     inImg = load_image(inImgPath)
-    inImgName = inImgPath.split('/')[-1].split('.')[0]
-    targetPath = os.path.join('Results', inImgName)
     if not os.path.isdir(targetPath):
         os.mkdir(targetPath)
 
@@ -183,18 +181,30 @@ def compSolutions(isQuant=True, isQual=True):
     return quantRes
 
 
-def vidFromBlur(blurImgPath, netPath):
+def vidFromBlur(blurImgPath, checkpoint, outpath):
     """Inferences a sharp video (7 sharp frames) from an input blurry frame, and saves the results under the Results
     directory."""
-    checkpoint = torch.load(netPath)
-    if "state_dict_G" in checkpoint:  # it's the pre-trained network from the paper
-        rmRunningFields(checkpoint)
-        netWeights = checkpoint['state_dict_G']
+    checkDict = torch.load(checkpoint)
+    if "state_dict_G" in checkDict:  # it's the pre-trained network from the paper
+        rmRunningFields(checkDict)
+        netWeights = checkDict['state_dict_G']
     else:  # my re-trained networks
-        netWeights = checkpoint['weights']
-    getResult(blurImgPath, [netWeights])
+        netWeights = checkDict['weights']
+    getResult(blurImgPath, [netWeights], outpath)
+
 
 if __name__ == "__main__":
-    blurryImgPath = "Ref/examples/00038-blurry.png"
-    netPath = "Models/RegCam/trainData_e44.pth"
-    vidFromBlur(blurryImgPath, netPath)
+    import os
+    import argparse
+    parser = argparse.ArgumentParser(description="Inference a sharp video using the trained video-from-image network")
+    parser.add_argument("-b", "--blurry", help="The full-path to the blurry input image")
+    parser.add_argument("-c", "--checkpoint", help="The full-path to a checkpoint of the trained network with which "
+                                                   "to inference")
+    parser.add_argument("-o", "--output", help="The full-path to the output directory")
+    args = parser.parse_args()
+
+    blurryImgPath = args.blurry
+    checkpoint = args.checkpoint
+    output = args.output
+
+    vidFromBlur(blurryImgPath, checkpoint, output)
