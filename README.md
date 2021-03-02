@@ -15,11 +15,55 @@ Examples:
    ```  
 1. Download the Raw images required for the dataset generation:
    1. Go to https://seungjunnah.github.io/Datasets/reds.html
-   1. Download the "train_orig_*" and "val_orig_*" files, and store them under DataSets/REDS/Raw/train and DataSets/REDS/Raw/val respectively.
-1. Generate the dataset by Executing:
+   1. Download the "train_orig_*" and "val_orig_*" files, and store them under seperate folders (one folder for the training zip files and one for the validation).
+1. Generate the dataset:
    ```
-   python DataSets/DataSets.py
-   ```    
-   
-## Training
+   usage: DataSets.py [-h] [-t TRAINING] [-v VALIDATION] [-m {0,1}] [--debug]
 
+   Generate datasets for video-from-image network training.
+
+   optional arguments:
+     -h, --help            show this help message and exit
+     -t TRAINING, --training TRAINING
+                           The full-path to the raw-training data directory
+     -v VALIDATION, --validation VALIDATION
+                           The full-path to the raw-training data directory
+     -m {0,1}, --masked {0,1}
+                           Simulate phase-masking during dataset generation.
+                           default: 1 (do simulate)
+     --debug               Display an exemplary set of input-targets upon
+                           completion
+   ``` 
+    
+## Training
+   ```
+   usage: train.py [-h] [-e EPOCHS] [-c CHECKPOINT] [-o OUTPUT]
+
+   Train the video-from-image network.
+   
+   optional arguments:
+     -h, --help            show this help message and exit
+     -e EPOCHS, --epochs EPOCHS
+                           The number of epochs to train for
+     -c CHECKPOINT, --checkpoint CHECKPOINT
+                           The full-path to a checkpoint for the training to
+                           initialize the network with
+     -o OUTPUT, --output OUTPUT
+                           The full-path to the output directory
+   ``` 
+## Inference
+   ```
+   usage: inference.py [-h] [-b BLURRY] [-c CHECKPOINT] [-o OUTPUT]
+
+   Inference a sharp video using the trained video-from-image network.
+   
+   optional arguments:
+     -h, --help            show this help message and exit
+     -b BLURRY, --blurry BLURRY
+                           The full-path to the blurry input image
+     -c CHECKPOINT, --checkpoint CHECKPOINT
+                           The full-path to a checkpoint of the trained network
+                           with which to inference
+     -o OUTPUT, --output OUTPUT
+                           The full-path to the output directory
+   ``` 
