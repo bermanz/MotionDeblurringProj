@@ -52,6 +52,10 @@ Examples:
                            The full-path to the output directory
    ``` 
 ## Inference
+   1. Download the Models directory containing the pre-trained networks' weights from:
+   https://drive.google.com/drive/folders/1ml1t0IVYFNUt4alpJ8deJLwvggX54sDp?usp=sharing  
+   and put it under the main project's path (keep the directory name "Models").
+   1.
    ```
    usage: inference.py [-h] [-b BLURRY] [-c CHECKPOINT] [-o OUTPUT]
 
