@@ -27,7 +27,7 @@ Examples:
      -t TRAINING, --training TRAINING
                            The full-path to the raw-training data directory
      -v VALIDATION, --validation VALIDATION
-                           The full-path to the raw-training data directory
+                           The full-path to the raw-validation data directory
      -m {0,1}, --masked {0,1}
                            Simulate phase-masking during dataset generation.
                            default: 1 (do simulate)
