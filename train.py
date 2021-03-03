@@ -1,11 +1,11 @@
 from Ref.model import centerEsti
 import pandas as pd
 
-from DataSets import *
+from dataSets import *
 import lossFuncs
 
 
-def train(nEpochs, optParams, batchSz=8, valEpochFact = 1, percWeight=3/4, checkpoint=None, outpath=None):
+def train(nEpochs, optParams, batchSz=8, valEpochFact=1, percWeight=3/4, checkpoint=None, outPath=None):
     """The training routine for the video-from-image network
 
         Params:
@@ -22,7 +22,7 @@ def train(nEpochs, optParams, batchSz=8, valEpochFact = 1, percWeight=3/4, check
     model = centerEsti()
     if checkpoint is not None:
         checkDict = torch.load(checkpoint)
-        model.load_state_dict(checkDict['weights'])
+        model.load_state_dict(checkDict)
         e0 = checkDict['epoch']+1
     else:
         e0 = 0
@@ -111,8 +111,8 @@ def train(nEpochs, optParams, batchSz=8, valEpochFact = 1, percWeight=3/4, check
                     "lr": optimizer.param_groups[0]['lr'],
                     "weights": model.state_dict()
                 }
-                if outpath:
-                    torch.save(checkpoint, os.path.join(outpath, f'trainData_e{epoch}.pth'))
+                if outPath:
+                    torch.save(checkpoint, os.path.join(outPath, f'trainData_e{epoch}.pth'))
                 else:
                     torch.save(checkpoint, f'trainData_e{epoch}.pth')
                 valMinLoss = totLoss
@@ -181,7 +181,7 @@ if __name__ == "__main__":
         'weight_decay': 0
     }
 
-    lossTable, outCheckpoint = train(nEpochs, optParams, checkpoint=inCheckpoint)
+    lossTable, outCheckpoint = train(nEpochs, optParams, checkpoint=inCheckpoint, outPath=outPath)
     if outPath:
         torch.save(outCheckpoint, os.path.join(outPath, f'trainData_e{nEpochs}.pth'))
-        lossTable.to_csv(os.path.join(outPath, f'convData_e{nEpochs}.pth'))
+        lossTable.to_csv(os.path.join(outPath, f'convData_e{nEpochs}.csv'))
