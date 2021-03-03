@@ -54,7 +54,10 @@ Examples:
 ## Inference
    1. Download the Models directory containing the pre-trained networks' weights from:
    https://drive.google.com/drive/folders/1ml1t0IVYFNUt4alpJ8deJLwvggX54sDp?usp=sharing  
-   and put it under the main project's path (keep the directory name "Models").
+   and put it under the main project's path (keep the directory name "Models"). This directory contains:
+      1. masked.pth - the weights obtained when re-training with the simulated phase-mask blurred dataset.
+      2. standard.pth - the weights obtained when re-training with the simulated regularly blurred dataset.
+      3. PreTrained - the pre-trained weights taken from the Jin et al.'s original paper's github: https://github.com/MeiguangJin/Learning-to-Extract-a-Video-Sequence-from-a-Single-Motion-Blurred-Image. The weights of the format "F*.pth" are combined with the re-trained weights to reconstruct off-central sharp frames.
    1.
    ```
    usage: inference.py [-h] [-b BLURRY] [-c CHECKPOINT] [-o OUTPUT]
