@@ -58,7 +58,7 @@ Examples:
       1. masked.pth - the weights obtained when re-training with the simulated phase-mask blurred dataset.
       2. standard.pth - the weights obtained when re-training with the simulated regularly blurred dataset.
       3. PreTrained - the pre-trained weights taken from the Jin et al.'s original paper's github: https://github.com/MeiguangJin/Learning-to-Extract-a-Video-Sequence-from-a-Single-Motion-Blurred-Image. The weights of the format "F*.pth" are combined with the re-trained weights to reconstruct off-central sharp frames.
-   1.
+   1. Inference:
    ```
    usage: inference.py [-h] [-b BLURRY] [-c CHECKPOINT] [-o OUTPUT]
 
