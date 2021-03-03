@@ -45,17 +45,17 @@ def estAllFrames(blurryImg, midFrameEst):
     model3 = F26_N9()
     model4 = F17_N9()
 
-    checkpoint = torch.load('Ref/models/F35_N8.pth', map_location=torch.device('cpu'))
+    checkpoint = torch.load('Models/preTrained/F35_N8.pth', map_location=torch.device(device))
     rmRunningFields(checkpoint)
-    model2.load_state_dict(checkpoint['state_dict_G'])
+    model2.load_state_dict(checkpoint)
 
-    checkpoint = torch.load('Ref/models/F26_N9_from_F35_N8.pth', map_location=torch.device('cpu'))
+    checkpoint = torch.load('Models/preTrained/F26_N9_from_F35_N8.pth', map_location=torch.device(device))
     rmRunningFields(checkpoint)
-    model3.load_state_dict(checkpoint['state_dict_G'])
+    model3.load_state_dict(checkpoint)
 
-    checkpoint = torch.load('Ref/models/F17_N9_from_F26_N9_from_F35_N8.pth', map_location=torch.device('cpu'))
+    checkpoint = torch.load('Models/preTrained/F17_N9_from_F26_N9_from_F35_N8.pth', map_location=torch.device(device))
     rmRunningFields(checkpoint)
-    model4.load_state_dict(checkpoint['state_dict_G'])
+    model4.load_state_dict(checkpoint)
 
     model2.to(device)
     model3.to(device)
@@ -102,18 +102,20 @@ def estAllFrames(blurryImg, midFrameEst):
     return outputFrames
 
 
-def getResult(inImgPath, solWeights, targetPath):
+def getResult(inImgPath, solWeights, outPath):
     """Get the output video for the input image using the input trained weights"""
     inImg = load_image(inImgPath)
+    imgName = inImgPath.split("\\")[-1].split('.')[0]
+    targetPath = os.path.join(outPath, imgName)
     if not os.path.isdir(targetPath):
         os.mkdir(targetPath)
 
-    save_image(inImg, os.path.join(targetPath, "blurry.png"))
     for weights in solWeights:
         midFrameEst = estMidFrame(inImg, weights)
         estFrames = estAllFrames(inImg, midFrameEst)
         saveImages(estFrames, targetPath)
         makeGif(targetPath)
+    save_image(inImg, os.path.join(targetPath, "blurry.png"))
 
 def infBatch(netWeights, isPM=False, batchSz=4, setIdx=None):
 
@@ -147,11 +149,9 @@ def infBatch(netWeights, isPM=False, batchSz=4, setIdx=None):
 def compSolutions(isQuant=True, isQual=True):
     """Compare all inspected solutions both quantitatively and qualitatively"""
 
-    refCP = torch.load('Ref/models/center_v3.pth')
-    rmRunningFields(refCP)
-    refWeights = refCP["state_dict_G"]
-    regWeights = torch.load('Models/RegCam/trainData_e44.pth')["weights"]
-    pmWeights = torch.load('Models/PhaseMasked/trainData_e42.pth')["weights"]
+    refWeights = torch.load('Models/preTrained/center_v3.pth', map_location=torch.device(device))
+    regWeights = torch.load('Models/standard.pth', map_location=torch.device(device))
+    pmWeights = torch.load('Models/masked.pth', map_location=torch.device(device))
 
     labels = ["Ref", "Reg", "PM"]
     quantRes = pd.DataFrame(index=["PSNR", "SSIM"], columns=labels)
@@ -184,12 +184,7 @@ def compSolutions(isQuant=True, isQual=True):
 def vidFromBlur(blurImgPath, checkpoint, outpath):
     """Inferences a sharp video (7 sharp frames) from an input blurry frame, and saves the results under the Results
     directory."""
-    checkDict = torch.load(checkpoint)
-    if "state_dict_G" in checkDict:  # it's the pre-trained network from the paper
-        rmRunningFields(checkDict)
-        netWeights = checkDict['state_dict_G']
-    else:  # my re-trained networks
-        netWeights = checkDict['weights']
+    netWeights = torch.load(checkpoint, map_location=torch.device(device))
     getResult(blurImgPath, [netWeights], outpath)
 
 
@@ -207,4 +202,6 @@ if __name__ == "__main__":
     checkpoint = args.checkpoint
     output = args.output
 
+    if not output:
+        output = os.getcwd()
     vidFromBlur(blurryImgPath, checkpoint, output)
