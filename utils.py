@@ -22,15 +22,14 @@ class ObjType(Enum):
     VidFromMotion = auto()
 
 
-
 def tensor2RGB(tensor):
     return (tensor.squeeze() * 255).clamp(0, 255).numpy().transpose(1, 2, 0).astype("uint8")
 
 
 def rmRunningFields(checkpoint):
-    runKeys = [key for key in checkpoint['state_dict_G'].keys() if "running_" in key]
+    runKeys = [key for key in checkpoint.keys() if "running_" in key]
     for key in runKeys:
-        del checkpoint['state_dict_G'][key]
+        del checkpoint[key]
 
 
 def load_image(filename, size=None, scale=None):
