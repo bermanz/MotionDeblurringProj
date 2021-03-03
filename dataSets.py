@@ -254,7 +254,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="Generate datasets for video-from-image network training")
     parser.add_argument("-t", "--training", help="The full-path to the raw-training data directory")
-    parser.add_argument("-v", "--validation", help="The full-path to the raw-training data directory")
+    parser.add_argument("-v", "--validation", help="The full-path to the raw-validation data directory")
     parser.add_argument("-m", "--masked", type=int, default=1, choices=[0, 1],
                         help="Simulate phase-masking during dataset generation. default: 1 (do simulate)")
     parser.add_argument("--debug", action="store_true",
