@@ -1,6 +1,8 @@
 from torchvision import models
 from Ref.model import centerEsti
 from dataSets import *
+import lpips
+
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 ## Load VGG for evaluating the Perceptual Loss:
@@ -19,6 +21,16 @@ def percLoss(x_hat, x):
     for feature in featuresX.keys():
         totLoss += ((featuresX[feature] - featuresX_hat[feature]) ** 2).mean()
     return totLoss / len(featuresX)
+
+def percSim(x_hat, x, net):
+
+    def normTens(tens):
+        midVal = (tens.max()-tens.min())/2
+        xSimm = tens - midVal
+        return xSimm/xSimm.max()
+
+    percSimRes = net(normTens(x_hat), normTens(x))
+    return percSimRes.squeeze().mean()
 
 def getVggFeatures(x, vgg16):
     """ Run an image forward through the pre-trained Vgg16 network and access it's feature map's required for
@@ -47,6 +59,7 @@ def evalImgQuant(x, xhat):
     xhat = xhat.clip(0, 1) * 255
     return pSNR(x, xhat), ssim(x, xhat)
 
+
 def evalNetQuant(netWeights, batchSz=4, isPM=False):
     """Evaluate the network quantitatively over the entire validation set"""
 
@@ -60,7 +73,13 @@ def evalNetQuant(netWeights, batchSz=4, isPM=False):
 
     totPsnr = 0
     totSsim = 0
+    percSimAlex = 0
+    percSimVgg = 0
 
+    lossAlex = lpips.LPIPS(net='alex').to(device)  # best forward scores
+    lossVgg = lpips.LPIPS(net='vgg').to(device)  # closer to "traditional" perceptual loss, when used for optimization
+
+    transRes = lambda x: x.to("cpu").numpy() / len(valSet)
     model.eval()
     valProg = tqdm(valSet, desc='Test', leave=False, ncols=100)
     with torch.no_grad():
@@ -80,4 +99,23 @@ def evalNetQuant(netWeights, batchSz=4, isPM=False):
             totPsnr += curPsnr
             totSsim += curSsim
 
-    return totPsnr.to("cpu").numpy() / len(valSet), totSsim.to("cpu").numpy() / len(valSet)
+            percSimAlex += percSim(targets[0], outputs[0], lossAlex)
+            percSimVgg += percSim(targets[0], outputs[0], lossVgg)
+
+    return transRes(totPsnr), transRes(totSsim), transRes(percSimAlex), transRes(percSimVgg)
+
+
+if __name__ == "__main__":
+    import pandas as pd
+    from utils import  rmRunningFields
+    preTrained = torch.load("Models/PreTrained/center_v3.pth")
+    rmRunningFields(preTrained)
+    standard = torch.load("Models/standard.pth")
+    masked = torch.load("Models/masked.pth")
+
+
+    quantRes = pd.DataFrame(index=["PreTrained", "Standard", "Maksed"], columns=["PSNR", "SSIM", "PercAlex", "PercVGG"])
+
+    for i, net in enumerate([preTrained, standard, masked]):
+        quantRes.iloc[i] = evalNetQuant(net, isPM=i==2)
+    quantRes.to_pickle("Quant.pkl")
