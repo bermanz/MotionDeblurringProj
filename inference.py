@@ -45,15 +45,15 @@ def estAllFrames(blurryImg, midFrameEst):
     model3 = F26_N9()
     model4 = F17_N9()
 
-    checkpoint = torch.load('Models/preTrained/F35_N8.pth', map_location=torch.device(device))
+    checkpoint = torch.load('Models/PreTrained/F35_N8.pth', map_location=torch.device(device))
     rmRunningFields(checkpoint)
     model2.load_state_dict(checkpoint)
 
-    checkpoint = torch.load('Models/preTrained/F26_N9_from_F35_N8.pth', map_location=torch.device(device))
+    checkpoint = torch.load('Models/PreTrained/F26_N9_from_F35_N8.pth', map_location=torch.device(device))
     rmRunningFields(checkpoint)
     model3.load_state_dict(checkpoint)
 
-    checkpoint = torch.load('Models/preTrained/F17_N9_from_F26_N9_from_F35_N8.pth', map_location=torch.device(device))
+    checkpoint = torch.load('Models/PreTrained/F17_N9_from_F26_N9_from_F35_N8.pth', map_location=torch.device(device))
     rmRunningFields(checkpoint)
     model4.load_state_dict(checkpoint)
 
@@ -104,8 +104,8 @@ def estAllFrames(blurryImg, midFrameEst):
 
 def getResult(inImgPath, solWeights, outPath):
     """Get the output video for the input image using the input trained weights"""
-    inImg = load_image(inImgPath)
-    imgName = inImgPath.split("\\")[-1].split('.')[0]
+    inImg = resizeImg(load_image(inImgPath))
+    imgName = os.path.split(inImgPath)[-1].split('.')[0]
     targetPath = os.path.join(outPath, imgName)
     if not os.path.isdir(targetPath):
         os.mkdir(targetPath)
@@ -149,7 +149,7 @@ def infBatch(netWeights, isPM=False, batchSz=4, setIdx=None):
 def compSolutions(isQuant=True, isQual=True):
     """Compare all inspected solutions both quantitatively and qualitatively"""
 
-    refWeights = torch.load('Models/preTrained/center_v3.pth', map_location=torch.device(device))
+    refWeights = torch.load('Models/PreTrained/center_v3.pth', map_location=torch.device(device))
     regWeights = torch.load('Models/standard.pth', map_location=torch.device(device))
     pmWeights = torch.load('Models/masked.pth', map_location=torch.device(device))
 

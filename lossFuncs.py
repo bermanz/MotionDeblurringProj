@@ -107,7 +107,7 @@ def evalNetQuant(netWeights, batchSz=4, isPM=False):
 
 if __name__ == "__main__":
     import pandas as pd
-    from utils import  rmRunningFields
+    from utils import rmRunningFields
     preTrained = torch.load("Models/PreTrained/center_v3.pth")
     rmRunningFields(preTrained)
     standard = torch.load("Models/standard.pth")

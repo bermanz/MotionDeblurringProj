@@ -43,7 +43,7 @@ def load_image(filename, size=None, scale=None):
 def save_image(data, filename):
 
     if not isinstance(data, torch.Tensor):
-        if isinstance(data, PIL.PngImagePlugin.PngImageFile):
+        if isinstance(data, PIL.PngImagePlugin.PngImageFile) or isinstance(data, PIL.Image.Image):
             img = data
         else:
             img = Image.fromarray(data)
@@ -94,6 +94,16 @@ def visualiseSet(dataSet, batchSz=4, objType=ObjType.SingleImgDblr):
                 showTensorImg(curAx, targets.squeeze()[idx])
                 curAx.set_title(f'Sharp {idx + 1}')
     # plt.tight_layout()
+
+
+def resizeImg(img, maxXSize=720):
+    """Resize input image to avoid large images inferencing issues"""
+    if img.size[1] > maxXSize:
+        downRat = maxXSize / img.size[1]
+        outImg = img.resize((int(img.size[0] * downRat),maxXSize))
+    else:
+        outImg = img
+    return outImg
 
 
 def showTensorImg(axes, tensIn):
